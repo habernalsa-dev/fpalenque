@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Futuros Palenqueros</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  :root{
+    --bg:#000000;
+    --ink:#f4f2ee;
+    --muted:rgba(244,242,238,0.50);
+    --muted-2:rgba(244,242,238,0.32);
+    --fiber:#e9ddc8;
+    --accent:#d8b98c;            /* warm fique sand */
+    --line:rgba(244,242,238,0.14);
+    --font: "Helvetica Neue", Helvetica, "Inter", system-ui, -apple-system, Arial, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:var(--font); }
+  body{ overflow:hidden; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  #root{ height:100%; }
+
+  .stage{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(58% 52% at 50% 46%, rgba(216,185,140,0.10) 0%, rgba(216,185,140,0.03) 38%, rgba(0,0,0,0) 70%),
+      #000;
+    overflow:hidden;
+  }
+  .grain{ position:fixed; inset:0; pointer-events:none; opacity:0.05; mix-blend-mode:screen; z-index:6;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); }
+
+  .ring{
+    position:relative;
+    width:min(92vw, 960px);
+    height:min(84vh, 700px);
+  }
+
+  /* fique fiber — slow atmospheric float + very slow spin */
+  .fiber-float{ position:absolute; inset:0; z-index:1; will-change:transform;
+    animation:float 22s ease-in-out infinite; }
+  .fiber{ position:absolute; inset:0; transform-origin:50% 50%; will-change:transform;
+    animation:spin 150s linear infinite; }
+  .fiber svg{ width:100%; height:100%; display:block; overflow:visible; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @keyframes float{
+    0%,100%{ transform:translate3d(0,-7px,0) scale(0.997); }
+    50%{ transform:translate3d(0,7px,0) scale(1.012); }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .fiber, .fiber-float{ animation:none; }
+    .core{ animation:none; opacity:1; transform:none; }
+    .foot .made .spark{ animation:none; }
+  }
+
+  /* center content */
+  .core{
+    position:absolute; inset:0; z-index:3;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:0 6%;
+    animation:rise 1s cubic-bezier(.2,.7,.2,1) both;
+  }
+  @keyframes rise{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+
+  .kicker{ font-size:11px; letter-spacing:0.42em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 18px; padding-left:0.42em; }
+  .headline{ font-size:clamp(30px, 5.2vmin, 54px); font-weight:600; letter-spacing:-0.02em;
+    line-height:0.98; margin:0; max-width:14ch; }
+  .subhead{ margin:18px auto 0; max-width:46ch;
+    font-size:clamp(12px, 1.55vmin, 15px); font-weight:400; line-height:1.5;
+    color:var(--muted); letter-spacing:0.005em; text-wrap:pretty; }
+
+  .menu{ margin-top:30px; display:flex; flex-wrap:wrap; gap:8px 26px; align-items:center; justify-content:center; }
+  .menu .sep{ color:var(--muted-2); font-size:12px; }
+
+  /* interactive text */
+  .hot{ position:relative; cursor:pointer; background:none; border:0; padding:6px 2px;
+    font-family:inherit; color:var(--ink); letter-spacing:0.04em;
+    transition:color .18s ease, text-shadow .18s ease; }
+  .hot::after{ content:""; position:absolute; left:2px; right:2px; bottom:0; height:1px;
+    background:var(--accent); transform:scaleX(0); transform-origin:left;
+    transition:transform .26s cubic-bezier(.2,.7,.2,1); opacity:.85; }
+  .hot:hover, .hot.on{ color:#fff; text-shadow:0 0 18px rgba(216,185,140,0.35); }
+  .hot:hover::after, .hot.on::after{ transform:scaleX(1); }
+  .menu .hot{ font-size:clamp(12px,1.7vmin,15px); font-weight:500; text-transform:uppercase; letter-spacing:0.16em; }
+
+  /* edge labels */
+  .edge{ position:absolute; z-index:3; white-space:nowrap;
+    font-size:clamp(10px,1.35vmin,12.5px); font-weight:500; text-transform:uppercase; letter-spacing:0.18em;
+    color:var(--muted); display:inline-flex; align-items:center; gap:9px;
+    text-shadow:0 0 14px #000, 0 0 22px #000; }
+  .edge .dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); flex:none;
+    box-shadow:0 0 0 4px rgba(0,0,0,0.55); transition:transform .2s ease, box-shadow .2s ease; }
+  .edge:hover .dot, .edge.on .dot{ transform:scale(1.4); box-shadow:0 0 12px 2px rgba(216,185,140,0.5),0 0 0 4px rgba(0,0,0,0.55); }
+  .edge .hot{ padding:4px 0; font:inherit; letter-spacing:inherit; }
+  .edge-n{ top:0; left:50%; transform:translate(-50%,-50%); }
+  .edge-s{ bottom:0; left:50%; transform:translate(-50%,50%); }
+  .edge-w{ left:0; top:50%; transform:translate(-50%,-50%); flex-direction:row-reverse; }
+  .edge-e{ right:0; top:50%; transform:translate(50%,-50%); }
+
+  /* IAGen + button */
+  .iagen{ position:fixed; top:16px; right:18px; z-index:30; display:flex; align-items:center; gap:0; }
+  .iagen .plus{ width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
+    background:rgba(255,255,255,0.03); color:var(--ink); display:flex; align-items:center; justify-content:center;
+    font-size:20px; font-weight:300; line-height:1; cursor:default; transition:all .2s ease; }
+  .iagen:hover .plus, .iagen:focus-within .plus{ border-color:rgba(216,185,140,0.6); color:#fff;
+    background:rgba(216,185,140,0.12); box-shadow:0 0 18px rgba(216,185,140,0.25); }
+  .iagen .tip{ position:absolute; top:50%; right:46px; transform:translateY(-50%) translateX(6px);
+    white-space:nowrap; background:rgba(8,8,9,0.92); border:1px solid var(--line); border-radius:10px;
+    padding:8px 13px; font-size:12px; letter-spacing:0.04em; color:#ece9e3;
+    opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease;
+    box-shadow:0 14px 34px -14px rgba(0,0,0,0.9); }
+  .iagen .tip b{ color:var(--accent); font-weight:600; }
+  .iagen:hover .tip, .iagen:focus-within .tip{ opacity:1; transform:translateY(-50%) translateX(0); }
+
+  /* author triangle (top-left) */
+  .author{ position:fixed; top:16px; left:18px; z-index:30; display:flex; align-items:center; }
+  .author .tri{ width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
+    background:rgba(255,255,255,0.03); display:flex; align-items:center; justify-content:center;
+    cursor:default; transition:all .2s ease; position:relative; color:var(--ink); }
+  .author .tri svg{ width:15px; height:13px; display:block; transition:color .2s ease; }
+  .author:hover .tri, .author:focus-within .tri{ border-color:rgba(216,185,140,0.6);
+    background:rgba(216,185,140,0.12); box-shadow:0 0 18px rgba(216,185,140,0.25); color:#fff; }
+  .author .tip{ position:absolute; top:42px; left:0; transform:translateY(-5px);
+    width:max-content; max-width:min(300px, 64vw); background:rgba(8,8,9,0.92); border:1px solid var(--line); border-radius:10px;
+    padding:9px 13px; font-size:12px; line-height:1.42; letter-spacing:0.02em; color:#ece9e3;
+    opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease;
+    box-shadow:0 14px 34px -14px rgba(0,0,0,0.9); }
+  .author .tip b{ color:var(--accent); font-weight:600; }
+  .author:hover .tip, .author:focus-within .tip{ opacity:1; transform:translateY(0); }
+
+  /* footer */
+  .foot{ position:fixed; left:0; right:0; bottom:0; z-index:5;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px clamp(18px,3.5vw,42px); font-size:11px; letter-spacing:0.08em; color:var(--muted-2); }
+  .foot .made{ display:flex; align-items:center; gap:9px; }
+  .foot .foot-credit{ display:flex; align-items:center; gap:9px; background:none; border:0; padding:0;
+    font-family:inherit; font-size:11px; letter-spacing:0.08em; color:var(--muted-2); cursor:pointer;
+    transition:color .18s ease; text-align:left; }
+  .foot .foot-credit:hover, .foot .foot-credit.on{ color:var(--ink); text-shadow:0 0 16px rgba(216,185,140,0.3); }
+  .foot .made .spark{ width:6px; height:6px; border-radius:50%; background:var(--accent); opacity:.8;
+    animation:pulse 3.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:.35;transform:scale(.8);} 50%{opacity:.9;transform:scale(1.1);} }
+  .foot .ref{ font-size:11px; letter-spacing:0.24em; text-transform:uppercase; }
+
+  /* floating windows */
+  .pop{ position:fixed; width:min(460px, 86vw); max-height:calc(100vh - 28px); overflow:auto;
+    background:rgba(8,8,9,0.92); backdrop-filter:blur(14px) saturate(1.1); -webkit-backdrop-filter:blur(14px) saturate(1.1);
+    border:1px solid var(--line); border-radius:16px; padding:22px 24px 24px; color:#ece9e3;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,0.9), 0 0 0 1px rgba(216,185,140,0.05);
+    opacity:0; transform:translateY(4px); transition:opacity .14s ease, transform .16s ease;
+    pointer-events:auto; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.2) transparent; }
+  .pop.ready{ opacity:1; transform:none; }
+  .pop::-webkit-scrollbar{ width:8px; }
+  .pop::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:8px; }
+  .pop .pk{ font-size:10px; letter-spacing:0.32em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:14px; padding-right:30px; display:flex; align-items:center; gap:9px; cursor:move; }
+  .pop .pk::before{ content:""; width:16px; height:1px; background:var(--accent); opacity:.6; }
+  .pop .close{ position:absolute; top:13px; right:13px; width:28px; height:28px; z-index:3;
+    display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.04);
+    border:1px solid var(--line); border-radius:50%; color:var(--muted); cursor:pointer;
+    font-size:14px; line-height:1; padding:0;
+    transition:background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease; }
+  .pop .close:hover{ background:rgba(216,185,140,0.14); color:#fff; border-color:rgba(216,185,140,0.5); transform:rotate(90deg); }
+  .pop p{ margin:0; font-size:13.5px; line-height:1.62; color:#dedbd4; }
+  .pop p.refs-body{ white-space:pre-wrap; font-size:12px; line-height:1.55; overflow-wrap:anywhere; }
+  .pop.win-refs{ width:min(640px, 92vw); max-height:calc(100vh - 40px); }
+  .pop .list{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:14px; }
+  .pop .list li{ position:relative; padding-left:18px; font-size:13px; line-height:1.58; color:#dedbd4; }
+  .pop .list li::before{ content:""; position:absolute; left:0; top:8px; width:6px; height:6px;
+    border:1px solid var(--accent); transform:rotate(45deg); }
+
+  .pop .lines{ display:flex; flex-direction:column; gap:16px; }
+  .pop .ln{ font-size:13px; line-height:1.5; }
+  .pop .ln strong{ color:#fff; font-weight:600; }
+  .pop .ln-title{ background:none; border:0; padding:0; text-align:left; font:inherit; font-weight:600;
+    color:#fff; cursor:pointer; display:inline-flex; align-items:baseline; gap:7px;
+    transition:color .16s ease; }
+  .pop .ln-title:hover{ color:var(--accent); }
+  .pop .ln-ico{ font-size:11px; color:var(--accent); opacity:.85; }
+  .pop .ln-desc{ margin-top:4px; color:#cdcabf; font-size:12.5px; line-height:1.52; }
+  .pop .chips{ margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; }
+  .pop .chip{ display:inline-flex; align-items:center; gap:6px; font-family:inherit; font-size:10.5px;
+    letter-spacing:0.1em; text-transform:uppercase; color:var(--accent); background:rgba(216,185,140,0.08);
+    border:1px solid rgba(216,185,140,0.28); border-radius:999px; padding:5px 12px; cursor:pointer;
+    transition:background .16s ease, border-color .16s ease; }
+  .pop .chip:hover{ background:rgba(216,185,140,0.18); border-color:rgba(216,185,140,0.55); }
+
+  /* image window */
+  .pop.win-image{ width:auto; max-width:min(420px, 86vw); padding:14px 14px 16px; }
+  .pop.win-image figure{ margin:0; }
+  .pop.win-image img{ display:block; width:100%; max-height:66vh; object-fit:contain; border-radius:9px;
+    background:#15140f; }
+  .pop.win-image figcaption{ margin-top:11px; padding:0 4px; font-size:12px; line-height:1.45; color:#cdcabf;
+    text-align:center; }
+  .pop.win-image .close{ background:rgba(0,0,0,0.5); }
+
+  /* embed window */
+  .pop.win-embed{ width:min(920px, 93vw); height:min(660px, 88vh); padding:0; overflow:hidden;
+    display:flex; flex-direction:column; }
+  .embed-head{ display:flex; align-items:center; gap:12px; padding:12px 52px 12px 18px;
+    border-bottom:1px solid var(--line); cursor:move; flex:none; }
+  .embed-title{ font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent);
+    font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .embed-open{ margin-left:auto; flex:none; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase;
+    color:#ece9e3; text-decoration:none; background:rgba(216,185,140,0.1); border:1px solid rgba(216,185,140,0.3);
+    border-radius:999px; padding:6px 13px; transition:background .16s ease; }
+  .embed-open:hover{ background:rgba(216,185,140,0.22); }
+  .embed-body{ position:relative; flex:1; min-height:0; background:#0c0c0d; }
+  .embed-load{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:10px; padding:24px; text-align:center; color:var(--muted); font-size:12.5px; letter-spacing:0.03em; }
+  .embed-load .spinner{ width:26px; height:26px; border-radius:50%; border:2px solid rgba(255,255,255,0.14);
+    border-top-color:var(--accent); animation:spin 0.9s linear infinite; }
+  .embed-body iframe{ position:relative; width:100%; height:100%; border:0; display:block; }
+
+  @media (max-width:640px){
+    .ring{ width:94vw; height:74vh; }
+    .edge{ letter-spacing:0.12em; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+
+
+const { useState, useRef, useLayoutEffect } = React;
+
+const IMG = {
+  sf:        "assets/staying-with-the-trouble.png",
+  espec:     "assets/speculative-everything.png",
+  autonomo:  "assets/designs-for-the-pluriverse.png",
+  futuros:   "assets/designing-futures.png",
+  hacha:     "assets/el-hacha-fria.png"
+};
+const MIRO = "https://miro.com/app/board/uXjVO_qYSXE=/?moveToWidget=3458764596423573007&cot=14";
+const ESCUELA = "https://escueladefuturos.scrd.gov.co/";
+
+/* ---------- content ---------- */
+const POP = {
+  problema:{ k:"Problema", variant:"para",
+    body:"¿Cómo la fabulación especulativa y las creaciones digitales interactivas pueden contribuir a la construcción de narrativas de futuro con la comunidad palenquera en contextos de diáspora (Bogotá) y territorio (Palenques de San Basilio y María La Baja), aportando al reconocimiento cultural y la imaginación colectiva?" },
+  objetivo:{ k:"Objetivo General", variant:"para",
+    body:"Desarrollar un proceso de investigación-creación que explore las narrativas especulativas y las creaciones digitales interactivas como herramientas para la construcción de futuros posibles con la comunidad palenquera en Bogotá (diáspora) y Palenque (territorio), contribuyendo al reconocimiento cultural y la imaginación colectiva." },
+  especificos:{ k:"Objetivos Específicos", variant:"list",
+    items:[
+      "Diseñar talleres de fabulación especulativa y diseño de futuros con la comunidad palenquera, orientados a la co-creación de narrativas de futuro que integren saberes ancestrales, lengua palenquera y herramientas digitales de creación.",
+      "Crear obras y experiencias digitales interactivas que materialicen las narrativas especulativas emergentes del proceso colaborativo con la comunidad.",
+      "Generar procesos de circulación, apropiación social del conocimiento y reflexión crítica sobre las obras, mediante eventos con componente de apropiación y publicaciones académicas."
+    ] },
+  sf:{ k:"Marco conceptual", variant:"lines", hint:"Toca cada concepto para ver la fuente.",
+    lines:[
+      {t:"SF — Donna Haraway", d:"Science Fiction, Speculative Fabulation, String Figures, So Far — Stay with the trouble.",
+        img:IMG.sf, cap:"Staying with the Trouble. Making Kin in the Chthulucene — Donna J. Haraway"},
+      {t:"Diseño Especulativo — Anthony Dunne y Fiona Raby", d:"Speculative Everything: Design, Fiction, and Social Dreaming.",
+        img:IMG.espec, cap:"Speculative Everything. Design, Fiction, and Social Dreaming — Anthony Dunne & Fiona Raby"},
+      {t:"Diseño Autónomo — Arturo Escobar", d:"Designs for the Pluriverse: Radical Interdependence, Autonomy, and the Making of Worlds.",
+        img:IMG.autonomo, cap:"Designs for the Pluriverse. Radical Interdependence, Autonomy, and the Making of Worlds — Arturo Escobar"},
+      {t:"Diseño de Futuros — Benedikt Groß y Eileen Mandir", d:"Designing Futures. Speculation, Critique, Innovation. A guide to exploring, visualizing and negotiating future scenarios.",
+        img:IMG.futuros, cap:"Designing Futures. Speculation · Critique · Innovation — Benedikt Groß & Eileen Mandir",
+        link:{url:MIRO, label:"Tablero Miro"}},
+      {t:"Escuela de Futuros", d:"", link:{url:ESCUELA, label:"Visitar sitio"}}
+    ] },
+  obras:{ k:"Obras de referencia", variant:"lines", hint:"Toca una obra para previsualizar el sitio.",
+    lines:[
+      {t:"Códice Futuro — Elder Tobar", embed:"https://codicefuturo.com/"},
+      {t:"Aplysia — María Laura Ruggiero", embed:"https://www.marialauraruggiero.com/featured-projects"},
+      {t:"Fabiane M. Borges — Tecnochamanismo y Ancestrofuturismo", embed:"https://tecnoxamanismo.wordpress.com/wp-content/uploads/2018/05/tcnxmnm-22_layout-2.pdf"}
+    ] },
+  afro:{ k:"Abordaje de lo Afro", variant:"lines",
+    lines:[
+      {t:"Ma Jende", d:"La Asociación «Ma Jende» para el Desarrollo Integral de la Comunidad Afrocolombiana de San Pablo es una organización sin fines de lucro enfocada en la defensa de la identidad étnica, la gastronomía, las tradiciones palenqueras y el apoyo a las comunidades vulnerables."},
+      {t:"Neris Barrios y Hilda Zúñiga", d:""},
+      {t:"María la Baja — corregimiento de San Pablo", d:""},
+      {t:"Diáspora Palenquera en Bogotá", d:""},
+      {t:"Cimarronaje", d:""}
+    ] },
+  creaciones:{ k:"Creaciones digitales interactivas", variant:"lines",
+    lines:[
+      {t:"Diálogo entre el marco conceptual, la comunidad participante y las posibilidades técnicas del proceso creativo", d:"Mäkelä (2007). "},
+      {t:"Tecnocultura — Donna Haraway", d:""},
+      {t:"Enfriar la tecnología (Barreneche, et al. 2025)", d:"",
+        img:IMG.hacha, cap:"El Hacha Fría. Palabra de tabaco para curar la tecnología — Carlos Barreneche, Jimmy Gifichiu Jitomañue y Sergio Umirez"}
+    ] },
+  referencias:{ k:"Referencias", variant:"para", refs:true,
+    body:"Barreneche, C., Gifichiu, J., Jitomañue, & Umirez, S. (2025). El hacha fría: Palabra de Tabaco para curar la tecnología. Instituto Distrital de las Artes-Idartes. https://idartesencasa.gov.co/sites/default/files/libros_pdf/EL-HACHA-FRIA-DIGITAL.pdf\n\nDunne, A., & Raby, F. (2013). Speculative Everything: Design, Fiction, and Social Dreaming. MIT Press.\n\nEscobar, A. (2018). Designs for the pluriverse : radical interdependence, autonomy, and the making of worlds. Duke University Press.\n\nGroß, B. & Mandir, E. (2024) Designing Futures : Speculation, Critique, Innovation. 1st ed. London: Laurence King Publishing.\n\nHaraway, D. J. (2016). Staying with the trouble. Duke University Press.\n\nMäkelä, M. (2007). Knowing Through Making: The role of artefact in practice-led research. Know Techn Pol, 20, 157-163.\n\nRuggiero, M L. (s. f.). Featured Projects. https://www.marialauraruggiero.com/featured-projects\n\nSecretaría de Cultura, Recreación y Deporte [SCRD]. (s. f.). Escuela de Futuros. https://escueladefuturos.scrd.gov.co/\n\nBorges, F. (Ed.). (s. f.). TCNXMNSM. REDE TECNOXAMANISMO, GOETHE-INSTITUT SÃO PAULO E INVISÍVEIS PRODUÇÕES. https://tecnoxamanismo.wordpress.com/wp-content/uploads/2018/05/tcnxmnm-22_layout-2.pdf\n\nTobar Panchoaga, E. M. (s.f.). Códice Futuro [Proyecto de investigación-creación]. Disponible en: https://eldertobar.com/portafolio/" },
+  claude:{ k:"Presentación realizada con Claude Design", variant:"para", refs:true,
+    body:"Crear un prototipo interactivo a modo de presentación de una sola página (Single Page Application) utilizando React, Tailwind CSS y animaciones (puedes usar CSS nativo o Framer Motion si está disponible).\n\nEstilo Visual y Diseño (UI):\n\nFondo: Completamente negro (#000000).\n\nTipografía: Limpia, de palo seco (sans-serif) y altamente legible (ej. Inter, Roboto o system-ui) en color blanco o tonos claros para contrastar con el fondo.\n\nElemento Gráfico Central (La Fibra de Fique): Debe haber un gran contorno de una elipse en el centro de la pantalla. Esta elipse debe tener una animación de rotación continua (spin). Visualmente, el trazo de la elipse debe verse rugoso, orgánico y texturizado, simulando el hilo de una fibra de fique (puedes lograr esto usando un SVG con un stroke-dasharray, filtros de turbulencia SVG o bordes asimétricos). Debe haber un fuerte contraste estilístico entre lo rugoso/orgánico de este hilo giratorio y la limpieza absoluta de la tipografía.\n\nDistribución y Contenido (Layout):\n\n1. Centro de la pantalla (dentro de la elipse):\nTítulo Principal: «Futuros palenqueros: fabulación especulativa y creaciones digitales para la construcción de paz con la diáspora palenquera en Bogotá y el Palenque de San Basilio».\nMenú Central: debajo del título, tres textos interactivos: «Problema», «Objetivo General» y «Objetivos Específicos».\n\n2. Contorno de la elipse (fijos):\nAlrededor de la elipse giratoria, ubicados en posiciones estratégicas y fijas (Norte, Sur, Este, Oeste), cuatro textos interactivos:\n— SF, Diseño Especulativo, Diseño Autónomo\n— Obras\n— Abordaje de lo Afro\n— Creaciones digitales interactivas\n\n3. Parte inferior (footer):\nA la izquierda: un texto pequeño que diga «Presentación realizada con Claude Design».\nA la derecha: un texto interactivo que diga «REFERENCIAS».\n\nInteractividad (comportamiento pop-up / rollover):\nTodos los textos interactivos abren una ventana emergente estilizada, limpia, con fondo oscuro semi-transparente o borde sutil, que contiene el texto correspondiente." }
+};
+
+/* ---------- fique fiber ellipse ---------- */
+function Fiber(){
+  return (
+    <div className="fiber-float" aria-hidden="true">
+      <div className="fiber">
+        <svg viewBox="0 0 1000 720" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="fique" x="-16%" y="-16%" width="132%" height="132%">
+              <feTurbulence type="turbulence" baseFrequency="0.012 0.03" numOctaves="3" seed="11" result="n">
+                <animate attributeName="baseFrequency" dur="34s" values="0.012 0.03;0.0135 0.027;0.011 0.032;0.012 0.03" repeatCount="indefinite"/>
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="24" xChannelSelector="R" yChannelSelector="G">
+                <animate attributeName="scale" dur="24s" values="22;27;20;22" repeatCount="indefinite"/>
+              </feDisplacementMap>
+            </filter>
+            <filter id="fique2" x="-16%" y="-16%" width="132%" height="132%">
+              <feTurbulence type="turbulence" baseFrequency="0.02 0.045" numOctaves="2" seed="4" result="n2">
+                <animate attributeName="baseFrequency" dur="30s" values="0.02 0.045;0.022 0.041;0.019 0.048;0.02 0.045" repeatCount="indefinite"/>
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" in2="n2" scale="16" xChannelSelector="R" yChannelSelector="G">
+                <animate attributeName="scale" dur="27s" values="15;19;13;15" repeatCount="indefinite"/>
+              </feDisplacementMap>
+            </filter>
+          </defs>
+          <g filter="url(#fique)">
+            <ellipse cx="500" cy="360" rx="438" ry="300" fill="none" stroke="var(--fiber)" strokeWidth="2.4" opacity="0.92"/>
+            <ellipse cx="500" cy="360" rx="438" ry="300" fill="none" stroke="var(--fiber)" strokeWidth="1.1" opacity="0.55" strokeDasharray="2 9 4 6 1 8"/>
+          </g>
+          <g filter="url(#fique2)">
+            <ellipse cx="500" cy="360" rx="430" ry="293" fill="none" stroke="var(--accent)" strokeWidth="0.9" opacity="0.38" strokeDasharray="1 7"/>
+            <ellipse cx="500" cy="360" rx="446" ry="307" fill="none" stroke="var(--fiber)" strokeWidth="0.8" opacity="0.30" strokeDasharray="3 12"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- one bibliographic / interactive line ---------- */
+function Line({ l, onOpen }){
+  const hasImg = !!l.img, hasEmbed = !!l.embed, hasLink = !!l.link;
+  const clickable = hasImg || hasEmbed || (hasLink && !hasImg);
+  const openExt = (url) => window.open(url, "_blank", "noopener,noreferrer");
+  const onTitle = () => {
+    if(hasImg) onOpen({ kind:"image", src:l.img, caption:l.cap });
+    else if(hasEmbed) onOpen({ kind:"embed", url:l.embed, title:l.t });
+    else if(hasLink) openExt(l.link.url);
+  };
+  const ico = hasImg ? "▣" : hasEmbed ? "⤢" : "↗";
+  return (
+    <div className="ln">
+      {clickable
+        ? <button className="ln-title" onClick={onTitle}>{l.t}<span className="ln-ico">{ico}</span></button>
+        : <strong>{l.t}</strong>}
+      {l.d ? <div className="ln-desc">{l.d}</div> : null}
+      <div className="chips">
+        {hasImg && hasLink ? <button className="chip" onClick={()=>openExt(l.link.url)}>{l.link.label} ↗</button> : null}
+        {hasEmbed ? <button className="chip" onClick={()=>openExt(l.embed)}>Abrir sitio ↗</button> : null}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- a single floating window (draggable) ---------- */
+function FloatingWindow({ win, z, onClose, onOpen }){
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  const drag = useRef(null);
+
+  useLayoutEffect(()=>{
+    const el = ref.current; if(!el) return;
+    const pw = el.offsetWidth, ph = el.offsetHeight;
+    const m = 14, vw = window.innerWidth, vh = window.innerHeight;
+    let left, top;
+    const p = win.place;
+    if(p.mode==="anchor"){
+      const a = p.anchor, side = p.side;
+      if(side==="bottom"){ left=a.cx-pw/2; top=a.bottom+14; }
+      else if(side==="top"){ left=a.cx-pw/2; top=a.top-14-ph; }
+      else if(side==="right"){ left=a.right+14; top=a.cy-ph/2; }
+      else { left=a.left-14-pw; top=a.cy-ph/2; }
+    } else {
+      left=(vw-pw)/2 + (p.offset||0);
+      top=(vh-ph)/2 + (p.offset||0);
+    }
+    left=Math.min(Math.max(left,m), Math.max(m, vw-pw-m));
+    top=Math.min(Math.max(top,m), Math.max(m, vh-ph-m));
+    setPos({left,top});
+  },[win.key]);
+
+  const onDown = (e)=>{
+    if(e.target.closest("button")||e.target.closest("a")||e.target.closest("input")) return;
+    if(!pos) return;
+    drag.current={ sx:e.clientX, sy:e.clientY, ol:pos.left, ot:pos.top };
+    try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(_){}
+  };
+  const onMove = (e)=>{
+    if(!drag.current) return;
+    setPos({ left:drag.current.ol+(e.clientX-drag.current.sx), top:drag.current.ot+(e.clientY-drag.current.sy) });
+  };
+  const onUp = ()=>{ drag.current=null; };
+
+  const cls = "pop" + (pos?" ready":"") + (win.kind==="image"?" win-image":"") + (win.kind==="embed"?" win-embed":"") + (win.kind==="pop" && win.data && win.data.refs?" win-refs":"");
+  const style = pos ? { left:pos.left, top:pos.top, zIndex:z } : { left:-9999, top:-9999, zIndex:z };
+
+  let body = null;
+  if(win.kind==="pop"){
+    const d = win.data;
+    body = (
+      <React.Fragment>
+        <div className="pk" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}>{d.k}</div>
+        {d.variant==="para" && <p className={d.refs?"refs-body":""}>{d.body}</p>}
+        {d.variant==="list" && <ul className="list">{d.items.map((t,i)=><li key={i}>{t}</li>)}</ul>}
+        {d.variant==="lines" && <div className="lines">{d.lines.map((l,i)=><Line key={i} l={l} onOpen={onOpen}/>)}</div>}
+      </React.Fragment>
+    );
+  } else if(win.kind==="image"){
+    body = (
+      <figure onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}>
+        <img src={win.payload.src} alt={win.payload.caption||""}/>
+        {win.payload.caption ? <figcaption>{win.payload.caption}</figcaption> : null}
+      </figure>
+    );
+  } else if(win.kind==="embed"){
+    body = (
+      <React.Fragment>
+        <div className="embed-head" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}>
+          <span className="embed-title">{win.payload.title}</span>
+          <a className="embed-open" href={win.payload.url} target="_blank" rel="noopener noreferrer">Abrir sitio ↗</a>
+        </div>
+        <div className="embed-body">
+          <div className="embed-load"><div className="spinner"></div>Cargando vista previa… si no aparece, usa «Abrir sitio».</div>
+          <iframe src={win.payload.url} title={win.payload.title} referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+        </div>
+      </React.Fragment>
+    );
+  }
+
+  return (
+    <div ref={ref} className={cls} style={style}>
+      <button className="close" aria-label="Cerrar" onClick={onClose}>✕</button>
+      {body}
+    </div>
+  );
+}
+
+function App(){
+  const [wins,setWins] = useState([]);
+  const idc = useRef(1);
+
+  const openPrimary = (id, side) => (e) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const anchor = { left:r.left,right:r.right,top:r.top,bottom:r.bottom, cx:r.left+r.width/2, cy:r.top+r.height/2 };
+    setWins(prev=>{
+      if(prev.length && prev[0].id===id) return [];   // toggle off
+      return [{ key:"w"+(idc.current++), id, primary:true, kind:"pop", data:POP[id], place:{mode:"anchor", anchor, side} }];
+    });
+  };
+
+  const openChild = (parentKey) => (payload) => {
+    setWins(prev=>{
+      const offset = prev.filter(w=>w.kind!=="pop").length * 18;
+      return [...prev, { key:"w"+(idc.current++), parentKey, kind:payload.kind, payload, place:{mode:"center", offset} }];
+    });
+  };
+
+  const closeWin = (key) => {
+    setWins(prev=>{
+      const remove = new Set([key]); let changed=true;
+      while(changed){ changed=false;
+        for(const w of prev){ if(w.parentKey && remove.has(w.parentKey) && !remove.has(w.key)){ remove.add(w.key); changed=true; } }
+      }
+      return prev.filter(w=>!remove.has(w.key));
+    });
+  };
+
+  const isOpen = (id) => wins.length>0 && wins[0].id===id;
+
+  const trig = (id, side, label, cls) => (
+    <button className={"hot"+(cls?(" "+cls):"")+(isOpen(id)?" on":"")} onClick={openPrimary(id,side)}>{label}</button>
+  );
+
+  return (
+    <div className="stage">
+      <div className="ring">
+        <Fiber/>
+
+        <div className="core">
+          <div className="kicker">Investigación · Creación</div>
+          <h1 className="headline">Futuros<br/>Palenqueros</h1>
+          <p className="subhead">
+            Fabulación especulativa y creaciones digitales interactivas con la Diáspora Palenquera en Bogotá y los Palenques de San Basilio y María La Baja.
+          </p>
+          <nav className="menu">
+            {trig("problema","bottom","Problema")}
+            <span className="sep">·</span>
+            {trig("objetivo","bottom","Objetivo General")}
+            <span className="sep">·</span>
+            {trig("especificos","bottom","Objetivos Específicos")}
+          </nav>
+        </div>
+
+        <div className="edge edge-n">
+          <span className="dot"></span>
+          <button className={"hot"+(isOpen("sf")?" on":"")} onClick={openPrimary("sf","bottom")}>
+            SF · Diseño Especulativo · Diseño Autónomo
+          </button>
+        </div>
+        <div className="edge edge-e">
+          <span className="dot"></span>
+          <button className={"hot"+(isOpen("obras")?" on":"")} onClick={openPrimary("obras","left")}>
+            Obras
+          </button>
+        </div>
+        <div className="edge edge-s">
+          <span className="dot"></span>
+          <button className={"hot"+(isOpen("creaciones")?" on":"")} onClick={openPrimary("creaciones","top")}>
+            Creaciones digitales interactivas
+          </button>
+        </div>
+        <div className="edge edge-w">
+          <span className="dot"></span>
+          <button className={"hot"+(isOpen("afro")?" on":"")} onClick={openPrimary("afro","right")}>
+            Abordaje de lo Afro
+          </button>
+        </div>
+      </div>
+
+      <div className="author" tabIndex="0" aria-label="Héctor Adolfo Bernal Sandoval — Doctorado en Comunicación, Lenguajes e Información — Pontificia Universidad Javeriana">
+        <span className="tri"><svg viewBox="0 0 16 14" aria-hidden="true"><polygon points="8,1.5 15,12.5 1,12.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg></span>
+        <span className="tip"><b>Héctor Adolfo Bernal Sandoval</b> · Doctorado en Comunicación, Lenguajes e Información · Pontificia Universidad Javeriana</span>
+      </div>
+
+      <div className="iagen" tabIndex="0" aria-label="Imaginar con IAGen, Julian Jaramillo PhD.">
+        <span className="tip">Imaginar con <b>IAGen</b> · Julian Jaramillo PhD.</span>
+        <span className="plus">+</span>
+      </div>
+
+      <footer className="foot">
+        <button className={"foot-credit"+(isOpen("claude")?" on":"")} onClick={openPrimary("claude","top")}>
+          <span className="spark"></span>Presentación realizada con Claude Design
+        </button>
+        <button className={"hot ref"+(isOpen("referencias")?" on":"")} onClick={openPrimary("referencias","top")}>
+          Referencias
+        </button>
+      </footer>
+
+      {wins.map((w,i)=>(
+        <FloatingWindow key={w.key} win={w} z={40 + i*2}
+          onClose={()=>closeWin(w.key)} onOpen={openChild(w.key)}/>
+      ))}
+
+      <div className="grain"></div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
+
+
+</script>
+</body>
+</html>
